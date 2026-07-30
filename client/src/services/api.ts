@@ -1,12 +1,23 @@
 import axios from 'axios';
+import mockAdapter from './mockAdapter.js';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
+const isMockMode =
+  window.location.hostname.endsWith('github.io') ||
+  localStorage.getItem('use_mock_api') === 'true' ||
+  import.meta.env.VITE_USE_MOCK === 'true';
+
+if (isMockMode && localStorage.getItem('use_mock_api') !== 'false') {
+  localStorage.setItem('use_mock_api', 'true');
+}
 
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  adapter: isMockMode ? mockAdapter : undefined,
 });
 
 // Request interceptor to attach JWT token
@@ -27,8 +38,9 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('expense_tracker_token');
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-        window.location.href = '/login';
+      const base = window.location.pathname.startsWith('/expense-tracker') ? '/expense-tracker' : '';
+      if (window.location.pathname !== `${base}/login` && window.location.pathname !== `${base}/register`) {
+        window.location.href = `${base}/login`;
       }
     }
     return Promise.reject(error);
