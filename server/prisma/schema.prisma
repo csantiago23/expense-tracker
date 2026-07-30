@@ -1,0 +1,190 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                    String                 @id @default(uuid())
+  email                 String                 @unique
+  passwordHash          String
+  name                  String
+  currency              String                 @default("USD")
+  dateFormat            String                 @default("MM/DD/YYYY")
+  theme                 String                 @default("system")
+  language              String                 @default("en")
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  accounts              Account[]
+  categories            Category[]
+  transactions          Transaction[]
+  budgets               Budget[]
+  bills                 Bill[]
+  goals                 SavingsGoal[]
+  recurringTransactions RecurringTransaction[]
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  tags                  Tag[]
+}
+
+model Account {
+  id                    String                 @id @default(uuid())
+  userId                String
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                  String
+  type                  String                 // CHECKING, SAVINGS, CASH, CREDIT_CARD, INVESTMENT
+  currentBalance        Float                  @default(0.0)
+  color                 String                 @default("#3b82f6")
+  institution           String?
+  isDefault             Boolean                @default(false)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  transactions          Transaction[]          @relation("AccountTransactions")
+  transfersTo           Transaction[]          @relation("TransferToAccount")
+  recurringTransactions RecurringTransaction[]
+}
+
+model Category {
+  id                    String                 @id @default(uuid())
+  userId                String
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                  String
+  type                  String                 // INCOME, EXPENSE
+  color                 String                 @default("#64748b")
+  icon                  String                 @default("Tag")
+  isDefault             Boolean                @default(false)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  transactions          Transaction[]
+  budgets               Budget[]
+  bills                 Bill[]
+  recurringTransactions RecurringTransaction[]
+}
+
+model Transaction {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId     String
+  account       Account   @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  toAccountId   String?
+  toAccount     Account?  @relation("TransferToAccount", fields: [toAccountId], references: [id], onDelete: SetNull)
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  amount        Float
+  type          String    // INCOME, EXPENSE, TRANSFER
+  date          DateTime
+  description   String
+  paymentMethod String    @default("Card") // Cash, Card, Bank Transfer, Online
+  isRecurring   Boolean   @default(false)
+  recurringId   String?
+  notes         String?
+  receiptUrl    String?
+  tags          String    @default("[]") // JSON string array of tags
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model RecurringTransaction {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId     String
+  account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  amount        Float
+  type          String    // INCOME, EXPENSE
+  frequency     String    // DAILY, WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY, YEARLY
+  startDate     DateTime
+  endDate       DateTime?
+  lastRunDate   DateTime?
+  nextDueDate   DateTime
+  active        Boolean   @default(true)
+  description   String
+  paymentMethod String    @default("Card")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amount     Float
+  month      Int
+  year       Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Bill {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  name         String
+  amount       Float
+  dueDate      DateTime
+  isPaid       Boolean   @default(false)
+  isRecurring  Boolean   @default(false)
+  reminderDays Int       @default(3)
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model SavingsGoal {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  targetAmount  Float
+  currentAmount Float     @default(0.0)
+  deadline      DateTime?
+  color         String    @default("#10b981")
+  category      String    @default("General")
+  isCompleted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // BILL_REMINDER, BUDGET_ALERT, LARGE_EXPENSE, RECURRING
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+}
+
+model Tag {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name   String
+  color  String @default("#6366f1")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+}
