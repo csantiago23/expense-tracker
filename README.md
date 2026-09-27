@@ -77,12 +77,19 @@ Expense Tracker/
 
 ### Backend (`/server/.env`)
 ```env
-PORT=5000
+PORT=5001
 DATABASE_URL="file:./dev.db"
 JWT_SECRET="expense_tracker_jwt_secret_key_production_2026_super_secure"
 JWT_EXPIRES_IN="7d"
 CORS_ORIGIN="http://localhost:5173"
 NODE_ENV="development"
+```
+> Note: port 5001 is used instead of 5000 because macOS's AirPlay Receiver commonly occupies port 5000.
+
+### Frontend (`/client/.env`)
+```env
+VITE_API_URL=http://localhost:5001/api
+VITE_USE_MOCK=false
 ```
 
 ---
@@ -97,11 +104,13 @@ NODE_ENV="development"
 ```bash
 cd server
 npm install
+cp .env.example .env   # fill in JWT_SECRET
+npx prisma generate
 npx prisma db push
 npx tsx prisma/seed.ts
 npm run dev
 ```
-The server will start on `http://localhost:5000`.
+The server will start on `http://localhost:5001`.
 
 ### 2. Frontend Setup
 ```bash

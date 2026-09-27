@@ -36,7 +36,7 @@ app.use('/api', limiter);
 // CORS
 app.use(
   cors({
-    origin: '*',
+    origin: config.corsOrigin,
     credentials: true,
   })
 );
